@@ -1,3 +1,6 @@
-black==19.3b0
-flake8==3.8.4
-pre-commit==2.7.1
+apache-airflow==2.2.3
+apache-airflow[cncf.kubernetes]
+apache-airflow[aws]
+virtualenv
+flake8
+pre-commit

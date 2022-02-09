@@ -11,30 +11,35 @@ from airflow.operators.python import PythonOperator
 dag = DAG(
     dag_id="download_rocket_launches",
     description="Download rocket pictures of recently launched rockets.",
-    start_date=airflow.utils.dates.days_ago(14),
-    schedule_interval="@daily",
+    start_date=airflow.utils.dates.days_ago(1),
+    schedule_interval=None,
+    catchup=False
+    # schedule_interval="@daily",
 )
+launches_url_str = "https://ll.thespacedevs.com/2.0.0/launch/upcoming?limit=5"
+launches_output_file = "/tmp/airflow/launches.json"
+bash_command_str = f"curl -o  -sL '{launches_url_str}' | jq . > ${launches_output_file}"
 
 download_launches = BashOperator(
     task_id="download_launches",
-    bash_command="curl -o /tmp/launches.json -L 'https://ll.thespacedevs.com/2.0.0/launch/upcoming'",  # noqa: E501
+    bash_command= bash_command_str,  # noqa: E501
     dag=dag,
 )
 
 
 def _get_pictures():
     # Ensure directory exists
-    pathlib.Path("/tmp/images").mkdir(parents=True, exist_ok=True)
+    pathlib.Path("/tmp/airflow/images").mkdir(parents=True, exist_ok=True)
 
     # Download all pictures in launches.json
-    with open("/tmp/launches.json") as f:
+    with open(launches_output_file) as f:
         launches = json.load(f)
         image_urls = [launch["image"] for launch in launches["results"]]
         for image_url in image_urls:
             try:
                 response = requests.get(image_url)
                 image_filename = image_url.split("/")[-1]
-                target_file = f"/tmp/images/{image_filename}"
+                target_file = f"/tmp/airflow/images/{image_filename}"
                 with open(target_file, "wb") as f:
                     f.write(response.content)
                 print(f"Downloaded {image_url} to {target_file}")
@@ -50,7 +55,7 @@ get_pictures = PythonOperator(
 
 notify = BashOperator(
     task_id="notify",
-    bash_command='echo "There are now $(ls /tmp/images/ | wc -l) images."',
+    bash_command='echo "There are now $(ls /tmp/airflow/images/ | wc -l) images."',
     dag=dag,
 )
 

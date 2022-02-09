@@ -49,7 +49,7 @@ get_pictures = PythonOperator(
 
 notify = BashOperator(
     task_id="notify",
-    bash_command='echo "There are now $(ls /tmp/images/ | wc -l) images."',
+    bash_command='echo "There are now $(ls /tmp/airflow/images/ | wc -l) images."',
     dag=dag,
 )
 

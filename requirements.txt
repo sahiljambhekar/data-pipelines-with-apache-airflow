@@ -1,6 +1,6 @@
 apache-airflow==2.2.3
-apache-airflow[cncf.kubernetes]
-apache-airflow[aws]
+#numpy==1.20.3
+apache-airflow[aws,cncf.kubernetes]
 virtualenv
 flake8
 pre-commit

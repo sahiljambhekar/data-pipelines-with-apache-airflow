@@ -59,14 +59,15 @@ services:
       - ./dags:/opt/airflow/dags
       - logs:/opt/airflow/logs
       - data:/data
+      - temp:/tmp
     environment: *airflow_environment
     command: scheduler
   events_api:
     build: ./docker/events-api
     image: manning-airflow/events-api
     ports:
-      - "5000:5000"
-
+      - "127.0.0.1:5001:5000"
 volumes:
   data:
   logs:
+  temp:

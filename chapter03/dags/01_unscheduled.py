@@ -5,16 +5,36 @@ import pandas as pd
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
+from airflow.operators.dummy import DummyOperator
+
 
 dag = DAG(
     dag_id="01_unscheduled", start_date=datetime(2019, 1, 1), schedule_interval=None
 )
 
+output_dir = "/tmp/airflow/data/events"
+
+where_am_i = BashOperator(
+    task_id="where_am_i",
+    bash_command=(
+        f"pwd && "
+        f"ls -alr"
+    ),
+    dag=dag,
+)
+
+error_out = BashOperator(
+    task_id="error_out",
+    bash_command="ls-alr",
+    dag=dag,
+)
+
+
 fetch_events = BashOperator(
     task_id="fetch_events",
     bash_command=(
-        "mkdir -p /data/events && "
-        "curl -o /data/events.json http://events_api:5000/events"
+        f"mkdir -p {output_dir} && "
+        f"curl -o {output_dir}/events.json http://events_api:5000/events"
     ),
     dag=dag,
 )
@@ -34,8 +54,12 @@ def _calculate_stats(input_path, output_path):
 calculate_stats = PythonOperator(
     task_id="calculate_stats",
     python_callable=_calculate_stats,
-    op_kwargs={"input_path": "/data/events.json", "output_path": "/data/stats.csv"},
+    op_kwargs={"input_path": f"{output_dir}/events.json", "output_path": f"{output_dir}/stats.csv"},
     dag=dag,
 )
 
+dummy = DummyOperator(dag=dag,task_id="dummy")
+
 fetch_events >> calculate_stats
+where_am_i >> error_out
+#[calculate_stats,error_out] >> dummy

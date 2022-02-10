@@ -1,6 +1,6 @@
 import json
 import pathlib
-
+import airflow
 import airflow.utils.dates
 import requests
 import requests.exceptions as requests_exceptions
@@ -14,11 +14,21 @@ dag = DAG(
     start_date=airflow.utils.dates.days_ago(1),
     schedule_interval=None,
     catchup=False
-    # schedule_interval="@daily",
+    schedule_interval="@daily",
 )
-launches_url_str = "https://ll.thespacedevs.com/2.0.0/launch/upcoming?limit=5"
-launches_output_file = "/tmp/airflow/launches.json"
-bash_command_str = f"curl -o  -sL '{launches_url_str}' | jq . > ${launches_output_file}"
+launches_url_str = "https://lldev.thespacedevs.com/2.0.0/launch/upcoming?limit=5"
+tmp_folder="/tmp/airflow"
+launches_output_file = f"{tmp_folder}/launches.json"
+bash_command_str = (
+    f"mkdir -p {tmp_folder} &&"
+    f"curl -sL '{launches_url_str}' | jq . > {launches_output_file}"
+)
+
+check_deps = BashOperator(
+    task_id = "check_jq_exists",
+    bash_command="jq --version",
+    dag=dag
+)
 
 download_launches = BashOperator(
     task_id="download_launches",
@@ -29,7 +39,7 @@ download_launches = BashOperator(
 
 def _get_pictures():
     # Ensure directory exists
-    pathlib.Path("/tmp/airflow/images").mkdir(parents=True, exist_ok=True)
+    pathlib.Path(f"{tmp_folder}/images").mkdir(parents=True, exist_ok=True)
 
     # Download all pictures in launches.json
     with open(launches_output_file) as f:
@@ -39,7 +49,7 @@ def _get_pictures():
             try:
                 response = requests.get(image_url)
                 image_filename = image_url.split("/")[-1]
-                target_file = f"/tmp/airflow/images/{image_filename}"
+                target_file = f"{tmp_folder}/images/{image_filename}"
                 with open(target_file, "wb") as f:
                     f.write(response.content)
                 print(f"Downloaded {image_url} to {target_file}")
@@ -59,4 +69,4 @@ notify = BashOperator(
     dag=dag,
 )
 
-download_launches >> get_pictures >> notify
+check_deps >> download_launches >> get_pictures >> notify

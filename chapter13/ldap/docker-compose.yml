@@ -37,7 +37,7 @@ services:
     volumes:
       - ./webserver_config.py:/opt/airflow/webserver_config.py
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8085:8080"
     environment: *airflow_environment
     command: webserver
 
